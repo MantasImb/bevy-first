@@ -1,56 +1,45 @@
+// use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 
-pub struct HelloPlugin;
+pub mod events;
+pub mod systems;
 
-#[derive(Component)]
-struct Person;
+mod enemy;
+mod player;
+mod score;
+mod star;
 
-#[derive(Component)]
-struct Name(String);
+use enemy::EnemyPlugin;
+use player::PlayerPlugin;
+use score::ScorePlugin;
+use star::StarPlugin;
 
-#[derive(Resource)]
-struct GreetTimer(Timer);
-
-fn hello_world() {
-    println!("hello world!");
-}
-
-fn add_people(mut commands: Commands) {
-    commands.spawn((Person, Name("Elaina Proctor".to_string())));
-    commands.spawn((Person, Name("Renzo Hume".to_string())));
-    commands.spawn((Person, Name("Zayna Nieves".to_string())));
-}
-
-fn greet_people(time: Res<Time>, mut timer: ResMut<GreetTimer>, query: Query<&Name, With<Person>>) {
-    // update our timer with the time elapsed since the last update
-    // if that caused the timer to finish, we say hello to everyone
-    if timer.0.tick(time.delta()).just_finished() {
-        for name in &query {
-            println!("Hello {}!", name.0)
-        }
-    }
-}
-
-fn update_people(mut query: Query<&mut Name, With<Person>>) {
-    for mut name in &mut query {
-        if name.0 == "Elaina Proctor" {
-            name.0 = "Elaina Hume".to_string();
-            break; // We don't need to change any other names.
-        }
-    }
-}
-
-impl Plugin for HelloPlugin {
-    fn build(&self, app: &mut App) {
-        app.insert_resource(GreetTimer(Timer::from_seconds(2.0, TimerMode::Repeating)));
-        app.add_systems(Startup, (hello_world, add_people));
-        app.add_systems(Update, (update_people, greet_people).chain());
-    }
-}
+use events::*;
+use systems::*;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_plugins(HelloPlugin)
+        .insert_resource(ClearColor(Color::srgb(0.2, 0.2, 0.2)))
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "First game".into(),
+                    name: Some("bevy.app".into()),
+                    resolution: (1000., 1000.).into(),
+                    enabled_buttons: bevy::window::EnabledButtons {
+                        maximize: false,
+                        ..Default::default()
+                    },
+                    ..default()
+                }),
+                ..default()
+            }),
+            // LogDiagnosticsPlugin::default(),
+            // FrameTimeDiagnosticsPlugin,
+        ))
+        .add_plugins((PlayerPlugin, EnemyPlugin, StarPlugin, ScorePlugin))
+        .add_event::<GameOver>()
+        .add_systems(Startup, setup)
+        .add_systems(Update, (exit_game, handle_game_over))
         .run();
 }
